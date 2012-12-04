@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNet.SignalR;
+﻿using System;
+using System.Diagnostics;
+using Microsoft.AspNet.SignalR;
 using RabbitMQ.Client;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,7 +38,9 @@ namespace SignalR.RabbitMQ
             }
 
             _rabbitConnection = new RabbitConnection(connectionfactory, rabbitMqExchangeName);
-            _rabbitConnection.OnMessage( wrapper => OnReceived(wrapper.Key, wrapper.Id, wrapper.Messages));
+            _rabbitConnection.OnMessage( wrapper => 
+                OnReceived(wrapper.Key, wrapper.Id, wrapper.Messages)
+                );
 
             _rabbitConnectiontask = _rabbitConnection.StartListening();
             _rabbitConnectiontask.ContinueWith(
@@ -64,10 +68,13 @@ namespace SignalR.RabbitMQ
             return Task.Factory.StartNew(msgs =>
             {
                 var taskCompletionSource = new TaskCompletionSource<object>();
-                // Group messages by source (connection id)
-                var messagesBySource = messages.GroupBy(m => m.Source);
 
-                SendImpl(messagesBySource.GetEnumerator(), taskCompletionSource);
+                var messagesBySource = ((Message[])msgs).GroupBy(m => m.Key);
+                foreach (var grp in messagesBySource)
+                {
+                    _rabbitConnection.Send(new RabbitMqMessageWrapper(grp.Key, grp.ToArray()));
+                }
+                 //SendImpl(messagesBySource.GetEnumerator(), taskCompletionSource);
 
                 return taskCompletionSource.Task;
             },

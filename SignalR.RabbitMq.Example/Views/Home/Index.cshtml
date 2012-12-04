@@ -4,14 +4,18 @@
 }
 
   
-  <input type="text" id="msg" />
+<input type="text" id="msg" />
+<div id="allbuttons">
   <input type="button" id="broadcast" value="broadcast" />
-
+    
+    <input type="button" id="autobroadcast" value="autobroadcast" />
+    <input type="button" id="stopbroadcast" value="stopbroadcast" />
+    </div>
 <p>Messages : </p>
 <ul id="messages">  </ul>
 <p>Users : </p>
   <ul id="users">  </ul>
-
+<div id="latestmessage"></div>
 <script type="text/javascript">
     $(function () {
         
@@ -20,15 +24,15 @@
 
         // Declare a function on the chat hub so the server can invoke it
         chat.client.addMessage = function (message, from) {
-            $('#messages').append('<li>' + message  + " from " + from + '</li>');
+            $('#latestmessage').text( message + " from " + from );
         };
 
         chat.client.userJoined = function (message) {
-            $('#users').append('<li>' + message + '</li>');
+            $('#users').prepend('<li>' + message + '</li>');
         };
 
         chat.client.onConsoleMessage = function (message) {
-            $('#messages').append('<li> From the console application : ' + message + '</li>');
+            $('#messages').prepend('<li> From the console application : ' + message + '</li>');
         };
 
         $("#broadcast").click(function () {
@@ -42,11 +46,29 @@
              });
         });
 
-        $("#broadcast").hide();
+        var data = 0;
+        var broadcastinterval;
+        $("#autobroadcast").click(function () {
+            broadcastinterval = setInterval(function () {
+                $('#msg').val(data ++ );
+                $("#broadcast").click();
+            }, 1);
+            $("#autobroadcast").hide();
+            $("#stopbroadcast").show();
+        });
+
+        $("#stopbroadcast").click(function () {
+            clearInterval(broadcastinterval);
+            $("#autobroadcast").show();
+            $("#stopbroadcast").hide();
+        });
+
+        $("#allbuttons").hide();
 
         // Start the connection
         $.connection.hub.start().done(function () {
-            $("#broadcast").show();
+            $("#allbuttons").show();
+            $("#stopbroadcast").hide();
             chat.server.notifyJoined();
         });
     });

@@ -18,7 +18,7 @@ namespace SignalR.RabbitMq.Example
         public override System.Threading.Tasks.Task OnDisconnected()
         {
             Clients.All.onDisconnected(Context.ConnectionId);
-
+            
             return base.OnDisconnected();
         }
 

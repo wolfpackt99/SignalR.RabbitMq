@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNet.SignalR.Hubs;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using Microsoft.AspNet.SignalR.Hubs;
 using Newtonsoft.Json;
 using System;
 
@@ -7,7 +9,7 @@ namespace SignalR.RabbitMQ
     public class RabbitConnectionEavesdropper
     {
         private readonly RabbitConnection _rabbitConnection;
-
+        private readonly Dictionary<string,Action<string,ClientHubInvocation>> _handlers ;
         public RabbitConnectionEavesdropper(RabbitConnection rabbitConnection)
         {
             if (rabbitConnection == null)
@@ -15,18 +17,7 @@ namespace SignalR.RabbitMQ
                 throw new ArgumentNullException("rabbitConnection");
             }
             _rabbitConnection = rabbitConnection;
-        }
-
-        public void ListenInOnClientMessages(string clientsideInvocation ,Action<string,ClientHubInvocation> handler)
-        {
-            if (string.IsNullOrEmpty(clientsideInvocation))
-            {
-                throw new ArgumentNullException("clientsideInvocation");
-            }
-            if (handler == null)
-            {
-                throw new ArgumentNullException("handler");
-            }
+            _handlers = new Dictionary<string, Action<string, ClientHubInvocation>>();
 
             _rabbitConnection.OnMessage(
               (x) =>
@@ -40,14 +31,33 @@ namespace SignalR.RabbitMQ
                           var hubMessage =
                               JsonConvert.DeserializeObject<ClientHubInvocation>(message.Value);
 
-                          if (!string.IsNullOrEmpty(hubMessage.Method) && hubMessage.Method.Equals(clientsideInvocation))
+                          if (!string.IsNullOrEmpty(hubMessage.Method) )
                           {
-                              handler.Invoke(message.Source, hubMessage);
+                              if(_handlers.ContainsKey(hubMessage.Method))
+                              {
+                                  var handler = _handlers[hubMessage.Method];
+                                  handler.Invoke(message.Source, hubMessage);
+                              }
                           }
                       }
                   }
               }
             );
+            
+        }
+
+        public void ListenInOnClientMessages(string clientsideInvocation, Action<string,ClientHubInvocation> handler)
+        {
+            if (string.IsNullOrEmpty(clientsideInvocation))
+            {
+                throw new ArgumentNullException("clientsideInvocation");
+            }
+            if (handler == null)
+            {
+                throw new ArgumentNullException("handler");
+            }
+            _handlers.Add(clientsideInvocation, handler);
+
         }
 
         private bool IsSignalRServerMethod(string key)

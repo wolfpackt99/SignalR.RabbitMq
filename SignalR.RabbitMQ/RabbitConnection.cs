@@ -1,10 +1,10 @@
+using System.Diagnostics;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 
 namespace SignalR.RabbitMQ
 {
@@ -13,14 +13,13 @@ namespace SignalR.RabbitMQ
         private readonly ConnectionFactory _rabbitMqConnectionfactory;
         private readonly string _rabbitMqExchangeName;
         private IModel _channel;
-        private IList<Action<RabbitMqMessageWrapper>> _handlers;
+        private Action<RabbitMqMessageWrapper> _handler;
         private CancellationTokenSource _cancellationTokenSource;
         
         public RabbitConnection(ConnectionFactory connectionfactory, string rabbitMqExchangeName)
         {
             _rabbitMqConnectionfactory = connectionfactory;
             _rabbitMqExchangeName = rabbitMqExchangeName;
-            _handlers = new List<Action<RabbitMqMessageWrapper>>();
         }
 
         public void OnMessage(Action<RabbitMqMessageWrapper> handler)
@@ -29,7 +28,7 @@ namespace SignalR.RabbitMQ
             {
                 throw new ArgumentNullException("handler");
             }
-            _handlers.Add(handler);
+            _handler = handler;
         }
 
         public Task Send(RabbitMqMessageWrapper message)
@@ -38,13 +37,20 @@ namespace SignalR.RabbitMQ
             {
                 if (_channel.IsOpen)
                 {
-                   return Task.Factory.StartNew(() => _channel.BasicPublish(_rabbitMqExchangeName,
-                                                                            message.Key,
-                                                                            null,
-                                                                            message.GetBytes()));
+                    return Task.Factory.StartNew((msg) =>
+                                                     {
+                                                         _channel.BasicPublish(_rabbitMqExchangeName,
+                                                                               message.Key,
+                                                                               null,
+                                                                               ((RabbitMqMessageWrapper) msg).GetBytes());
+                                                         Debug.Write(">");
+                                                     }, message
+                    );
                 }
-
-                throw new Exception("RabbitMQ channel is not open.");
+                else
+                {
+                    throw new Exception("RabbitMQ channel is not open.");
+                }
             }
             catch (Exception exception)
             {
@@ -75,25 +81,24 @@ namespace SignalR.RabbitMQ
                             {
                                 try
                                 {
-                                    var ea = (BasicDeliverEventArgs) consumer.Queue.Dequeue();
+                                    var ea = (BasicDeliverEventArgs)consumer.Queue.Dequeue();
                                     _channel.BasicAck(ea.DeliveryTag, false);
 
-                                    Task.Factory.StartNew((handlers) =>
+                                    Task.Factory.StartNew((handler) =>
                                                               {
                                                                   var message =
                                                                       RabbitMqMessageWrapper.Deserialize(ea.Body);
-
-                                                                  var handlersToInform =
-                                                                      (IList<Action<RabbitMqMessageWrapper>>) handlers;
-
-                                                                  foreach (var handler in handlersToInform)
+                                                                  var hndlr = handler as Action<RabbitMqMessageWrapper>;
+                                                                  if (hndlr != null)
                                                                   {
-
-                                                                      handler.Invoke(message);
+                                                                      hndlr.Invoke(message);
+                                                                      Debug.Write("<");
                                                                   }
-                                                              }, _handlers);
 
-                                }catch(EndOfStreamException eose)
+                                                              }, _handler);
+
+                                }
+                                catch (EndOfStreamException eose)
                                 {
                                     //ignore
                                 }

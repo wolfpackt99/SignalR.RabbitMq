@@ -59,7 +59,7 @@ namespace SignalR.RabbitMq.Example
             };
 
             var exchangeName = "SignalRExchange";
-            GlobalHost.DependencyResolver.UseRabbitMq(factory, exchangeName);
+           GlobalHost.DependencyResolver.UseRabbitMq(factory, exchangeName);
         }
     }
 }
