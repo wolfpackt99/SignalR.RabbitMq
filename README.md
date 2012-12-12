@@ -6,6 +6,11 @@ About
 SignalR.RabbitMq is an implementation of an IMessageBus using RabbitMq as the backing store and would be used to allow a
 signalr web application to be scaled across a web farm.
 
+
+Please note the following describes useage of the release built on SignalR 1.0.0-alpha
+--------------------------------------------------------------------------------------
+
+
 Installation
 ------------
 
@@ -14,7 +19,7 @@ A compiled library is available via NuGet
 To install via the nuget package console
 
 ```PS
-Install-Package SignalR.RabbitMq
+Install-Package SignalR.RabbitMq -Pre
 ```
 
 To install via the nuget user interface in Visual Studio the package to search for is "SignalR.RabbitMq"
