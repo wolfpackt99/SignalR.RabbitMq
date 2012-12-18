@@ -18,13 +18,13 @@ namespace SignalR.RabbitMQ
             ConnectToRabbit( connectionfactory, rabbitMqExchangeName);
         }
 
-        public override void Dispose()
+        protected override void Dispose(bool disposing)
         {
-            if(_rabbitConnection != null)
+            if (_rabbitConnection != null)
             {
                 _rabbitConnection.Dispose();
             }
-            base.Dispose();
+            base.Dispose(disposing);
         }
 
         private void ConnectToRabbit(ConnectionFactory connectionfactory, string rabbitMqExchangeName)
